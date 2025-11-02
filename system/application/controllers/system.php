@@ -825,8 +825,56 @@ class System extends MY_Controller {
 					$this->data['normalize_predicate_table'] = array_keys($predicates);
 					unset($predicates);
 					break;
-		 	}
-	 	} catch (Exception $e) {
+				case "export_media_folder":  // Export media folder as zip
+					if (!$this->data['login']->is_logged_in) $this->kickout();
+					$book_id = (isset($_REQUEST['book_id']) && !empty($_REQUEST['book_id'])) ? (int) $_REQUEST['book_id'] : 0;
+					if (empty($book_id)) show_error('Invalid book ID');
+					$this->data['book'] = $this->books->get($book_id);
+					$this->set_user_book_perms();
+					if (!$this->login_is_book_admin()) show_error('Invalid permissions');
+					
+					// Get the media directory path
+					$media_path = FCPATH.$this->data['book']->slug.'/media/';
+					
+					// Check if media directory exists
+					if (!file_exists($media_path) || !is_dir($media_path)) {
+						show_error('Media folder not found for this book');
+					}
+					
+					// Create zip file directly in memory
+					$this->load->library('zip');
+					$this->zip->clear_data(); // Ensure clean start
+					
+					// Read the media directory and add files to zip
+					$this->zip->read_dir($media_path, false);
+					
+					// Get the zip data
+					$zip_data = $this->zip->get_zip();
+					
+					// Check if zip data was created successfully
+					if ($zip_data === false) {
+						show_error('Failed to create ZIP file');
+					}
+					
+					// Set headers for download
+					$filename = $this->data['book']->slug.'_media.zip';
+					header('Content-Type: application/zip');
+					header('Content-Disposition: attachment; filename="'.$filename.'"');
+					header('Content-Length: ' . strlen($zip_data));
+					header('Connection: close');
+					
+					// Flush output buffers to prevent corruption
+					while (ob_get_level()) {
+						ob_end_clean();
+					}
+					
+					// Output the file
+					echo $zip_data;
+					
+					// Exit to prevent further output
+					exit;
+				}
+			} catch (Exception $e) {
 			show_error($e->getMessage());
 		}
 
