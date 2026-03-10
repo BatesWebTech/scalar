@@ -202,6 +202,10 @@ class User_model extends MY_Model {
 
         $ldapSearch = ldap_search($ldapCon, $basedn, $ldapFilter);
 
+		if ( ! $ldapSearch ) {
+			throw new Exception(ldap_error($ldapCon));
+		}
+
         // Found the user, now check the password by trying to bind as that user
         $info = ldap_get_entries($ldapCon, $ldapSearch);
         if ( $info['count'] ) {
